@@ -8,19 +8,25 @@ const mongoose = require("mongoose");
 
 const fileUnlink = promisfy(fs.unlink);
 
-imageRouter.post("/", upload.single("image"), async (req, res) => {
+imageRouter.post("/", upload.array("image", 5), async (req, res) => {
   try {
     if (!req.user) throw new Error("no authentication");
-    const image = await new Image({
-      user: {
-        _id: req.user.id,
-        name: req.user.name,
-        username: req.user.username,
-      },
-      public: req.body.public,
-      key: req.file.filename,
-      originalFileName: req.file.originalname,
-    }).save();
+    const images = await Promise.all(
+      req.files.map(async (file) => {
+        const image = await new Image({
+          user: {
+            _id: req.user.id,
+            name: req.user.name,
+            username: req.user.username,
+          },
+          public: req.body.public,
+          key: file.filename,
+          originalFileName: file.originalname,
+        }).save();
+        return image;
+      })
+    );
+
     res.json(image);
   } catch (err) {
     console.log(err);
